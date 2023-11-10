@@ -1,40 +1,44 @@
 #!/usr/bin/node
+/**
+ * a script that prints all characters of a Star Wars movie
+ * use star wars api
+ */
 const request = require('request');
-const API_URL = 'https://swapi.dev/api';
+const film_id = process.argv[2];
+if (!film_id  || isNaN(film_id)) {
+  process.exit(1);
+}
+const url = `https://swapi-api.hbtn.io/api/films/${film_id}`;
 
-if (process.argv.length > 2) {
-  request(`${API_URL}/films/${process.argv[2]}/`, (err, response, body) => {
-    if (err) {
-      console.error(err);
-      return;
-    }
+request(url, (error, res, body) => {
+  if (error) {
+    console.log(error);
+    return;
+  }
+  const characterList = [];
 
-    if (response.statusCode !== 200) {
-      console.error(`Request failed with status code ${response.statusCode}`);
-      return;
-    }
+  const json = JSON.parse(body);
+  const characters = json.characters;
 
-    const charactersURLs = JSON.parse(body).characters;
-    const characterPromises = charactersURLs.map(characterURL => {
-      return new Promise((resolve, reject) => {
-        request(characterURL, (characterErr, _, characterBody) => {
-          if (characterErr) {
-            reject(characterErr);
-          } else {
-            resolve(JSON.parse(characterBody).name);
-          }
-        });
+  characters.forEach((character) => {
+    const url = character;
+    const promise = new Promise((resolve, reject) => {
+      request(url, (error, response, body) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        const json = JSON.parse(body);
+        resolve(json.name);
       });
     });
-
-    Promise.all(characterPromises)
-      .then(characterNames => {
-        console.log(characterNames.join('\n'));
-      })
-      .catch(allErr => {
-        console.error(allErr);
-      });
+    characterList.push(promise);
   });
-} else {
-  console.log('Please provide a Movie ID as a command-line argument.');
-}
+  Promise.all(characterList).then((values) => {
+    values.forEach((value) => {
+      console.log(value);
+    });
+  }).catch((error) => {
+    console.log(error);
+  });
+});
